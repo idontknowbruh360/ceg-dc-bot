@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CEGBot - Discord Reaction Role Admin Panel</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🤖</text></svg>">
+</head>
+<body>
+
+    <header>
+        <div class="nav-container">
+            <div class="brand">
+                <div class="brand-icon">🤖</div>
+                <div>
+                    <div class="brand-title">CEGBot Admin</div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted);">Reaction Role Panel Manager</div>
+                </div>
+            </div>
+
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <div id="botStatusBadge" class="status-badge connecting">
+                    <div class="status-dot"></div>
+                    <span id="botStatusText">Checking Bot...</span>
+                </div>
+                <button class="btn btn-secondary" onclick="toggleTokenModal()">⚙️ Settings</button>
+            </div>
+        </div>
+    </header>
+
+    <main>
+        <div id="tokenWarningBanner" class="banner" style="display: none;">
+            <div class="banner-content">
+                <span style="font-size: 1.5rem;">⚠️</span>
+                <div>
+                    <strong>Discord Token Missing or Invalid</strong>
+                    <div style="font-size: 0.85rem; color: var(--text-secondary);">Configure your bot token in Settings to enable live Discord guild auto-detection and message deployment.</div>
+                </div>
+            </div>
+            <button class="btn btn-primary" onclick="toggleTokenModal()">Set Token</button>
+        </div>
+
+        <div id="tokenModal" class="glass-card" style="display: none; margin-bottom: 2rem; border-color: var(--blurple);">
+            <div class="card-header">
+                <div class="card-title">🔑 Discord Bot Configuration</div>
+                <button class="btn btn-secondary btn-icon" onclick="toggleTokenModal()">✕</button>
+            </div>
+            <div class="form-group">
+                <label>Discord Bot Token</label>
+                <input type="text" id="tokenInput" placeholder="Paste your bot token from Discord Developer Portal...">
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.3rem;">
+                    Find your token at: <a href="https://discord.com/developers/applications" target="_blank" style="color: var(--blurple);">Discord Developer Applications Portal</a>
+                </div>
+            </div>
+            <div style="display: flex; gap: 1rem; justify-content: flex-end;">
+                <button class="btn btn-secondary" onclick="toggleTokenModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="saveToken()">Save Token</button>
+            </div>
+        </div>
+
+        <div class="grid-two-col">
+            <div class="glass-card">
+                <div class="card-header">
+                    <div class="card-title">
+                        <span>✨</span> <span id="formCardHeading">Create Reaction Panel</span>
+                    </div>
+                    <button class="btn btn-secondary btn-icon" title="Reset Form" onclick="resetForm()">🔄 Reset</button>
+                </div>
+
+                <form id="panelForm" onsubmit="handleFormSubmit(event)">
+                    <input type="hidden" id="editingPanelId" value="">
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="guildSelect">Discord Server (Guild)</label>
+                            <select id="guildSelect" required onchange="onGuildChanged()">
+                                <option value="">Loading servers...</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="channelSelect">Target Channel</label>
+                            <select id="channelSelect" required>
+                                <option value="">Select channel...</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="panelTitle">Embed Title</label>
+                            <input type="text" id="panelTitle" value="Self Roles | Pick Your Roles" placeholder="e.g. Server Roles" required oninput="updateLivePreview()">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="panelColor">Accent Color</label>
+                            <div class="color-input-wrapper">
+                                <input type="color" id="panelColor" value="#5865F2" oninput="syncColorHex(this.value); updateLivePreview()">
+                                <input type="text" id="panelColorHex" value="#5865F2" style="font-family: monospace;" oninput="syncColorPicker(this.value); updateLivePreview()">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="panelDescription">Description (Supports markdown & emojis)</label>
+                        <textarea id="panelDescription" rows="4" placeholder="React to this message with the emojis below to receive your roles!" oninput="updateLivePreview()">React below to pick your server roles:
+
+🎮 - Gamer Role
+🎨 - Creator Role
+📢 - Announcements Role</textarea>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="thumbnailUrl">Thumbnail Image URL (Optional)</label>
+                            <input type="url" id="thumbnailUrl" placeholder="https://example.com/logo.png" oninput="updateLivePreview()">
+                        </div>
+
+                        <div class="form-group">
+                            <label for="imageUrl">Main Banner Image URL (Optional)</label>
+                            <input type="url" id="imageUrl" placeholder="https://example.com/banner.png" oninput="updateLivePreview()">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="footerText">Footer Text (Optional)</label>
+                        <input type="text" id="footerText" placeholder="e.g. Click reactions to toggle roles" oninput="updateLivePreview()">
+                    </div>
+
+                    <div style="margin-top: 1.5rem; margin-bottom: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 1.25rem;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
+                            <label style="margin-bottom: 0; font-weight: 600;">Reaction Role Mappings</label>
+                            <button type="button" class="btn btn-secondary btn-icon" onclick="addRoleRow()" style="font-size: 0.8rem; padding: 0.3rem 0.6rem;">+ Add Reaction</button>
+                        </div>
+                        
+                        <div style="display: flex; gap: 0.35rem; margin-bottom: 0.75rem; flex-wrap: wrap;">
+                            <span style="font-size: 0.75rem; color: var(--text-muted); align-self: center;">Quick Emojis:</span>
+                            <button type="button" class="btn btn-secondary" style="padding: 0.15rem 0.4rem; font-size: 0.8rem;" onclick="insertQuickEmoji('🎮')">🎮</button>
+                            <button type="button" class="btn btn-secondary" style="padding: 0.15rem 0.4rem; font-size: 0.8rem;" onclick="insertQuickEmoji('⭐')">⭐</button>
+                            <button type="button" class="btn btn-secondary" style="padding: 0.15rem 0.4rem; font-size: 0.8rem;" onclick="insertQuickEmoji('🔥')">🔥</button>
+                            <button type="button" class="btn btn-secondary" style="padding: 0.15rem 0.4rem; font-size: 0.8rem;" onclick="insertQuickEmoji('🎨')">🎨</button>
+                            <button type="button" class="btn btn-secondary" style="padding: 0.15rem 0.4rem; font-size: 0.8rem;" onclick="insertQuickEmoji('📢')">📢</button>
+                            <button type="button" class="btn btn-secondary" style="padding: 0.15rem 0.4rem; font-size: 0.8rem;" onclick="insertQuickEmoji('✅')">✅</button>
+                        </div>
+
+                        <div id="rolesListContainer" class="roles-list">
+                        </div>
+                    </div>
+
+                    <div style="display: flex; gap: 1rem;">
+                        <button type="submit" class="btn btn-primary" style="flex: 1;">
+                            <span id="submitBtnIcon">🚀</span> <span id="submitBtnText">Deploy Panel to Discord</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <div>
+                <div class="glass-card" style="position: sticky; top: 90px;">
+                    <div class="card-header">
+                        <div class="card-title">
+                            <span>👁️</span> Discord Embed Live Preview
+                        </div>
+                        <span style="font-size: 0.75rem; color: var(--text-muted);">Real-time</span>
+                    </div>
+
+                    <div class="discord-preview-container">
+                        <div class="discord-message">
+                            <div class="discord-avatar">🤖</div>
+                            <div class="discord-content">
+                                <div class="discord-author">
+                                    <span class="discord-author-name">CEGBot</span>
+                                    <span class="discord-bot-tag">BOT</span>
+                                    <span class="discord-timestamp">Today at 12:00 PM</span>
+                                </div>
+
+                                <div class="discord-embed" id="previewEmbedBox">
+                                    <div class="discord-embed-main">
+                                        <div class="discord-embed-title" id="previewTitle">Self Roles | Pick Your Roles</div>
+                                        <div class="discord-embed-description" id="previewDescription">React below to pick your server roles:</div>
+                                    </div>
+                                    <img id="previewThumbnail" class="discord-embed-thumbnail" src="" style="display: none;">
+                                    <img id="previewImage" class="discord-embed-image" src="" style="display: none;">
+                                    <div id="previewFooter" class="discord-embed-footer" style="display: none;"></div>
+                                </div>
+
+                                <div id="previewReactionsBar" class="discord-reactions">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="glass-card">
+            <div class="card-header">
+                <div class="card-title">
+                    <span>📌</span> Deployed Reaction Role Panels
+                </div>
+                <button class="btn btn-secondary btn-icon" onclick="loadPanels()" title="Refresh List">🔄 Refresh</button>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Panel Title</th>
+                            <th>Channel ID</th>
+                            <th>Discord Msg ID</th>
+                            <th>Reaction Roles</th>
+                            <th>Status</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="panelsTableBody">
+                        <tr>
+                            <td colspan="7" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                                Loading deployed panels...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </main>
+
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
